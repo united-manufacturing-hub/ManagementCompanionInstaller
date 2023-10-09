@@ -15,11 +15,12 @@ function logMessage {
 function handleError {
     logMessage "❌ Error:" "$1"
     logMessage "💡 Tip:" "$2"
+    logMessage " For more details, check the logs at /tmp/mgmt_install.log"
     exit 1
 }
 
 function handleSuccess {
-    logMessage "✅" "$1"
+    logMessage "  ✅" "$1"
 }
 
 function handleStep {
@@ -64,7 +65,7 @@ if [[ ! $confirm =~ ^[Yy]$ ]]; then
     handleError "Aborting..." "You can run the script again to install MgmtCompanion."
     exit 1
 fi
-handleSuccess "Beginning installation..."
+handleStep "Beginning installation..."
 
 # The install script shall check if executed as root user, and abort if not #572
 handleCheck "Checking for root..."
@@ -81,10 +82,19 @@ fi
 handleSuccess "Authentication token detected."
 
 # The install script shall check if there is a internet connection to management.umh.app #573
+handleCheck "Checking for dig..."
+if ! command -v dig >> /tmp/mgmt_install.log 2>&1; then
+    handleStep "dig is not installed. Installing dig..."
+    if ! yum install -y bind-utils >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to install dig." "Check your network connection or install dig manually using 'sudo yum install bind-utils' and run the script again."
+        exit 1
+    fi
+fi
+handleSuccess "dig is installed successfully."
 handleCheck "Checking for internet connection..."
 ## Check if management.umh.app is resolvable (dns)
 handleStep "Checking if management.umh.app is resolvable..."
-if ! host management.umh.app >> /tmp/mgmt_install.log 2>&1; then
+if ! dig +short management.umh.app >> /tmp/mgmt_install.log 2>&1; then
     handleError "management.umh.app is not resolvable." "Check your network connection or try again later."
     exit 1
 fi
