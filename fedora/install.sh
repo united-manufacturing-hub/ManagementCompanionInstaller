@@ -50,6 +50,7 @@ function handleInstalled {
 
 
 rm -f /tmp/mgmt_install.log
+clear
 
 # Summary of changes to be done #600
 handleCheck "This script will perform the following actions on your system:"
