@@ -16,8 +16,17 @@ function handleError {
     logMessage "❌ Error:" "$1"
     logMessage "💡 Tip:" "$2"
     logMessage " For more details, check the logs at /tmp/mgmt_install.log"
+
+    # Prompt user if they want to display the log file contents
+    read -p "Do you want to display the log file contents? (Y/n): " display_log
+    display_log=${display_log:-Y}
+    if [[ $display_log =~ ^[Yy]$ ]]; then
+        cat /tmp/mgmt_install.log
+    fi
+
     exit 1
 }
+
 
 function handleSuccess {
     logMessage "  ✅" "$1"
@@ -152,7 +161,7 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
         exit 1
     fi
-    if ! bash k3s-install.sh; then
+    if ! bash k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install k3s." "Check the logs above for any error messages."
         exit 1
     fi
