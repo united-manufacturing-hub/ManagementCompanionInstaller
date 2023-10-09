@@ -152,6 +152,24 @@ if ! command -v curl >> /tmp/mgmt_install.log 2>&1; then
 fi
 handleSuccess "curl is installed successfully."
 
+
+# Ensure /usr/local/bin is in the PATH
+handleCheck "Checking if /usr/local/bin is in the PATH..."
+if [[ ! ":$PATH:" == *":/usr/local/bin:"* ]]; then
+    handleStep "/usr/local/bin is not in the PATH. Adding it to the PATH..."
+    if ! echo "export PATH=$PATH:/usr/local/bin" >> ~/.bashrc; then
+        handleError "Failed to add /usr/local/bin to the PATH." "Manually add /usr/local/bin to the PATH using 'echo \"export PATH=\$PATH:/usr/local/bin\" >> ~/.bashrc' and run the script again."
+        exit 1
+    fi
+    handleSuccess "/usr/local/bin is added to the PATH successfully."
+else
+    handleSuccess "/usr/local/bin is already in the PATH."
+fi
+
+# Source the .bashrc file to update the PATH
+handleCheck "Sourcing the .bashrc file..."
+source ~/.bashrc
+
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
@@ -180,8 +198,8 @@ if ! command -v kubectl >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to download kubectl." "Check your network connection or download kubectl manually from https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl, make it executable, and move it to /usr/local/bin/ and run the script again or install kubectl manually using 'sudo yum install kubectl' and run the script again."
         exit 1
     fi
-    chmod +x kubectl
     mv kubectl /usr/local/bin/
+    chmod +x /usr/local/bin/kubectl
     handleSuccess "kubectl is installed successfully."
 else
     handleSuccess "kubectl is already installed."
