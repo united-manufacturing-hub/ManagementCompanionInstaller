@@ -169,6 +169,25 @@ fi
 handleCheck "Sourcing the .bashrc file..."
 source ~/.bashrc
 
+# Check if SELinux is enabled
+handleCheck "Checking if SELinux is enabled..."
+if getenforce | grep -Fq 'Enforcing'; then
+    # Install SELinux policy for k3s ( container-selinux selinux-policy-base)
+    handleStep "SELinux is enabled. Installing SELinux policy for k3s..."
+    if ! yum install -y container-selinux selinux-policy-base >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y container-selinux selinux-policy-base' and run the script again."
+        exit 1
+    fi
+    handleSuccess "SELinux policy (1/2) for k3s is installed successfully."
+    ### For RHEL 7/8/9: http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm
+    if ! yum install -y http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm' and run the script again."
+        exit 1
+    fi
+else
+    handleSuccess "SELinux is disabled."
+fi
+
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
@@ -178,6 +197,7 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
         exit 1
     fi
+    chmod +x k3s-install.sh
     if ! bash k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install k3s." "Check the logs above for any error messages."
         exit 1
