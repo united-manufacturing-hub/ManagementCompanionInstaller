@@ -69,6 +69,13 @@ function handleInstalled {
 rm -f /tmp/mgmt_install.log
 clear
 
+# Override API_URL if CUSTOM_API_URL is set
+if [[ -n $CUSTOM_API_URL ]]; then
+    export API_URL=$CUSTOM_API_URL
+    handleSuccess "Custom API_URL set to $API_URL"
+fi
+
+
 # Summary of changes to be done #600
 handleCheck "This script will perform the following actions on your system:"
 echo -e "1️⃣ Check for necessary prerequisites."
