@@ -188,10 +188,15 @@ else
 fi
 
 # The install script shall disable the firewall for RHEL/CentOS/Fedora as per k3s documentation
-handleSecurity "Disabling the firewall..."
-if ! systemctl disable --now firewalld; then
-    handleError "Failed to disable the firewall." "Manually disable the firewall using 'sudo systemctl disable --now firewalld' and run the script again."
-    exit 1
+handleSecurity "Checking and disabling the firewall..."
+if systemctl list-units --full --all | grep -Fq 'firewalld.service'; then
+    if ! systemctl disable --now firewalld; then
+        handleError "Failed to disable the firewall." "Manually disable the firewall using 'sudo systemctl disable --now firewalld' and run the script again."
+        exit 1
+    fi
+    handleSuccess "Firewall disabled successfully."
+else
+    handleWarning "Firewalld service not found. Skipping firewall disable step."
 fi
 handleSuccess "Firewall disabled successfully."
 
