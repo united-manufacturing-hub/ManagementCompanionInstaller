@@ -377,9 +377,10 @@ if [[ $(kubectl get statefulsets -n mgmtcompanion --field-selector metadata.name
     TIMEOUT=300  # 5 minutes
     INTERVAL=5   # check every 5 seconds
     ELAPSED=0
-    handleSleep "Waiting for MgmtCompanion pod to be running..." 5
+    handleSleep "Waiting for MgmtCompanion pod ($mgmtcompanion_pod) to be running..." 5
     while [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') != "Running" && $ELAPSED -lt $TIMEOUT ]]; do
         handleSleep "Waiting for MgmtCompanion pod to be running..." $INTERVAL
+        kubectl get pods -n mgmtcompanion $mgmtcompanion_pod
         ELAPSED=$((ELAPSED + INTERVAL))
     done
     if [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') == "Running" ]]; then
