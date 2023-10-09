@@ -173,7 +173,7 @@ source ~/.bashrc
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     handleStep "k3s is not installed. Installing k3s..."
-    curl -sfL https://get.k3s.io -o k3s-install.sh
+    curl -sfL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1
     if [[ $? -ne 0 ]]; then
         handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
         exit 1
