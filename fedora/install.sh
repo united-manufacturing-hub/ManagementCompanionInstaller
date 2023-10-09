@@ -3,9 +3,15 @@
 # Customizable Parameters
 export INSTALL_K3S_VERSION=v1.28.2+k3s1
 export INSTALL_KUBECTL_VERSION=v1.28.2
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+export MANAGEMENT_URL=https://management.umh.app
+export API_URL=$MANAGEMENT_URL/api
+export CONFIGMAP_URL=$MANAGEMENT_URL/static/kubernetes/configmap.yaml
+export SECRET_URL=$MANAGEMENT_URL/static/kubernetes/secret.yaml
+export STATEFULSET_URL=$MANAGEMENT_URL/static/kubernetes/statefulset.yaml
+export INSTALLER_URL=$MANAGEMENT_URL/static/fedora/install.sh
 TIMEOUT=300  # 5 minutes
 INTERVAL=5   # check every 5 seconds
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 
 function logMessage {
@@ -82,7 +88,7 @@ handleStep "Beginning installation..."
 # The install script shall check if executed as root user, and abort if not #572
 handleCheck "Checking for root..."
 if [[ $EUID -ne 0 ]]; then
-    handleError "This script must be run as root." "Use 'sudo ./scriptname.sh' to run it as root or use the following command: curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
+    handleError "This script must be run as root." "Use 'sudo ./scriptname.sh' to run it as root or use the following command: curl -sSL $INSTALLER_URL | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
 fi
 handleSuccess "Root user detected."
 
@@ -106,11 +112,11 @@ handleSuccess "RHEL version $RHEL_VERSION is supported."
 # The install script shall check if the authentication token is present #574
 handleCheck "Checking for authentication token..."
 if [[ -z "$AUTH_TOKEN" ]]; then
-    handleError "Authentication token is not present." "Ensure you've included the AUTH_TOKEN in your command. Example: curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
+    handleError "Authentication token is not present." "Ensure you've included the AUTH_TOKEN in your command. Example: curl -sSL $INSTALLER_URL | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
 fi
 handleSuccess "Authentication token detected."
 
-# The install script shall check if there is a internet connection to management.umh.app #573
+# The install script shall check if there is a internet connection to $MANAGEMENT_URL #573
 handleCheck "Checking for dig..."
 if ! command -v dig >> /tmp/mgmt_install.log 2>&1; then
     handleStep "dig is not installed. Installing dig..."
@@ -121,19 +127,19 @@ if ! command -v dig >> /tmp/mgmt_install.log 2>&1; then
 fi
 handleSuccess "dig is installed successfully."
 handleCheck "Checking for internet connection..."
-## Check if management.umh.app is resolvable (dns)
-handleStep "Checking if management.umh.app is resolvable..."
-if ! dig +short management.umh.app >> /tmp/mgmt_install.log 2>&1; then
-    handleError "management.umh.app is not resolvable." "Check your network connection or try again later."
+## Check if $MANAGEMENT_URL is resolvable (dns)
+handleStep "Checking if $MANAGEMENT_URL is resolvable..."
+if ! dig +short $MANAGEMENT_URL >> /tmp/mgmt_install.log 2>&1; then
+    handleError "$MANAGEMENT_URL is not resolvable." "Check your network connection or try again later."
     exit 1
 fi
-## Check if management.umh.app is reachable (http)
-handleStep "Checking if management.umh.app is reachable..."
-if ! curl -sSL https://management.umh.app/api >> /tmp/mgmt_install.log 2>&1; then
-    handleError "management.umh.app is not reachable." "Check your network connection or try again later."
+## Check if $MANAGEMENT_URL is reachable (http)
+handleStep "Checking if $MANAGEMENT_URL is reachable..."
+if ! curl -sSL $API_URL >> /tmp/mgmt_install.log 2>&1; then
+    handleError "$MANAGEMENT_URL is not reachable." "Check your network connection or try again later."
     exit 1
 fi
-handleSuccess "management.umh.app is resolvable."
+handleSuccess "$MANAGEMENT_URL is resolvable."
 
 # Validate AUTH_TOKEN format
 handleCheck "Validating authentication token format..."
@@ -300,17 +306,17 @@ handleSuccess "Namespace mgmtcompanion created successfully."
 
 ## Download the MgmtCompanion manifests (configmap, secret, statefulset)
 handleStep "Downloading MgmtCompanion manifests..."
-if ! curl -sSL https://management.umh.app/static/kubernetes/configmap.yaml -o /tmp/configmap.yaml; then
+if ! curl -sSL $CONFIGMAP_URL -o /tmp/configmap.yaml; then
     handleError "Failed to download configmap.yaml." "Check your network connection"
     exit 1
 fi
 handleSuccess "configmap.yaml downloaded successfully."
-if ! curl -sSL https://management.umh.app/static/kubernetes/secret.yaml -o /tmp/secret.yaml; then
+if ! curl -sSL $SECRET_URL -o /tmp/secret.yaml; then
     handleError "Failed to download secret.yaml." "Check your network connection"
     exit 1
 fi
 handleSuccess "secret.yaml downloaded successfully."
-if ! curl -sSL https://management.umh.app/static/kubernetes/statefulset.yaml -o /tmp/statefulset.yaml; then
+if ! curl -sSL $STATEFULSET_URL -o /tmp/statefulset.yaml; then
     handleError "Failed to download statefulset.yaml." "Check your network connection"
     exit 1
 fi
