@@ -235,7 +235,7 @@ fi
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     handleStep "k3s is not installed. Installing k3s..."
-    curl -sfL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1
+    curl -sSL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1
     if [[ $? -ne 0 ]]; then
         handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
         exit 1
@@ -313,17 +313,17 @@ handleSuccess "Namespace mgmtcompanion created successfully."
 
 ## Download the MgmtCompanion manifests (configmap, secret, statefulset)
 handleStep "Downloading MgmtCompanion manifests..."
-if ! curl -sSL $CONFIGMAP_URL -o /tmp/configmap.yaml; then
+if ! curl -sSL $CONFIGMAP_URL -o /tmp/configmap.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download configmap.yaml." "Check your network connection"
     exit 1
 fi
 handleSuccess "configmap.yaml downloaded successfully."
-if ! curl -sSL $SECRET_URL -o /tmp/secret.yaml; then
+if ! curl -sSL $SECRET_URL -o /tmp/secret.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download secret.yaml." "Check your network connection"
     exit 1
 fi
 handleSuccess "secret.yaml downloaded successfully."
-if ! curl -sSL $STATEFULSET_URL -o /tmp/statefulset.yaml; then
+if ! curl -sSL $STATEFULSET_URL -o /tmp/statefulset.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download statefulset.yaml." "Check your network connection"
     exit 1
 fi
