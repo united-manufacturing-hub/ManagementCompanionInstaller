@@ -179,14 +179,29 @@ if getenforce | grep -Fq 'Enforcing'; then
         exit 1
     fi
     handleSuccess "SELinux policy (1/2) for k3s is installed successfully."
-    ### For RHEL 7/8/9: http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm
-    if ! yum install -y http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm >> /tmp/mgmt_install.log 2>&1; then
-        handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y http://mirror.centos.org/centos-7/7/extras/x86_64/Packages/container-selinux-2.119.2-1.911c772.el7_8.noarch.rpm' and run the script again."
+    handleStep "Installing SELinux policy (2/2) for k3s..."
+    # This step requires allowing SHA1 package signatures
+    handleStep "Allowing SHA1 package signatures..."
+    if ! update-crypto-policies --set DEFAULT:SHA1; then
+        handleError "Failed to allow SHA1 package signatures." "Manually allow SHA1 package signatures using 'sudo update-crypto-policies --set DEFAULT:SHA1' and run the script again."
         exit 1
     fi
+    handleSuccess "SHA1 package signatures are allowed."
+    if ! yum install -y https://rpm.rancher.io/k3s/latest/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y https://rpm.rancher.io/k3s/latest/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm' and run the script again."
+        exit 1
+    fi
+    # Return back to the default crypto policy
+    handleStep "Returning back to the default crypto policy..."
+    if ! update-crypto-policies --set DEFAULT; then
+        handleError "Failed to return back to the default crypto policy." "Manually return back to the default crypto policy using 'sudo update-crypto-policies --set DEFAULT' and run the script again."
+        exit 1
+    fi
+    handleSuccess "SELinux policy (2/2) for k3s is installed successfully."
 else
     handleSuccess "SELinux is disabled."
 fi
+handleSuccess "SELinux policy for k3s is installed successfully."
 
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
