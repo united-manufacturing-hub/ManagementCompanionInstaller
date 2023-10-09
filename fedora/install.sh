@@ -67,12 +67,25 @@ function handleInstalled {
 
 
 rm -f /tmp/mgmt_install.log
+rn -f /tmp/configmap.yaml
+rm -f /tmp/secret.yaml
+rm -f /tmp/statefulset.yaml
 clear
 
 # Override API_URL if CUSTOM_API_URL is set
 if [[ -n $CUSTOM_API_URL ]]; then
-    export API_URL=$CUSTOM_API_URL
-    handleSuccess "Custom API_URL set to $API_URL"
+    export MANAGEMENT_URL=$CUSTOM_API_URL
+    export API_URL=$MANAGEMENT_URL/api
+    export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
+    export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
+    export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
+    export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
+    echo "MANAGEMENT_URL: $MANAGEMENT_URL"
+    echo "API_URL: $API_URL"
+    echo "CONFIGMAP_URL: $CONFIGMAP_URL"
+    echo "SECRET_URL: $SECRET_URL"
+    echo "STATEFULSET_URL: $STATEFULSET_URL"
+    echo "INSTALLER_URL: $INSTALLER_URL"
 fi
 
 
