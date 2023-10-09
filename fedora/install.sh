@@ -75,6 +75,23 @@ if [[ $EUID -ne 0 ]]; then
 fi
 handleSuccess "Root user detected."
 
+# Check if the RHEL machine is registered
+handleCheck "Checking if your RHEL machine is registered..."
+if ! subscription-manager status >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Your RHEL machine is not registered." "Register your machine with 'subscription-manager register' and run the script again."
+    exit 1
+fi
+handleSuccess "Your RHEL machine is registered."
+
+# Check RHEL version
+handleCheck "Checking RHEL version..."
+RHEL_VERSION=$(grep -oP '(?<= )[0-9]+(?=\.?)' /etc/redhat-release | head -1)
+if [[ ! "$RHEL_VERSION" =~ ^(7|8|9)$ ]]; then
+    handleError "Unsupported RHEL version. Supported versions are 7, 8, and 9." "Check your RHEL version with 'cat /etc/redhat-release' and upgrade to a supported version."
+    exit 1
+fi
+handleSuccess "RHEL version $RHEL_VERSION is supported."
+
 # The install script shall check if the authentication token is present #574
 handleCheck "Checking for authentication token..."
 if [[ -z "$AUTH_TOKEN" ]]; then
@@ -114,23 +131,6 @@ if [[ ! "$AUTH_TOKEN" =~ ^[a-fA-F0-9]{64}$ ]]; then
     exit 1
 fi
 handleSuccess "Authentication token format is valid."
-
-# Check if the RHEL machine is registered
-handleCheck "Checking if your RHEL machine is registered..."
-if ! subscription-manager status >> /tmp/mgmt_install.log 2>&1; then
-    handleError "Your RHEL machine is not registered." "Register your machine with 'subscription-manager register' and run the script again."
-    exit 1
-fi
-handleSuccess "Your RHEL machine is registered."
-
-# Check RHEL version
-handleCheck "Checking RHEL version..."
-RHEL_VERSION=$(grep -oP '(?<= )[0-9]+(?=\.?)' /etc/redhat-release | head -1)
-if [[ ! "$RHEL_VERSION" =~ ^(7|8|9)$ ]]; then
-    handleError "Unsupported RHEL version. Supported versions are 7, 8, and 9." "Check your RHEL version with 'cat /etc/redhat-release' and upgrade to a supported version."
-    exit 1
-fi
-handleSuccess "RHEL version $RHEL_VERSION is supported."
 
 # Ensure curl is installed (this should never happen, as we use curl to download the script, but just in case)
 handleCheck "Checking for curl..."
