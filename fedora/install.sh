@@ -5,6 +5,8 @@ export INSTALL_K3S_VERSION=v1.28.2+k3s1
 export INSTALL_KUBECTL_VERSION=v1.28.2
 TIMEOUT=300  # 5 minutes
 INTERVAL=5   # check every 5 seconds
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
 
 function logMessage {
     local emoji=$1
@@ -182,7 +184,7 @@ if getenforce | grep -Fq 'Enforcing'; then
     handleStep "Installing SELinux policy (2/2) for k3s..."
     # This step requires allowing SHA1 package signatures
     handleStep "Allowing SHA1 package signatures..."
-    if ! update-crypto-policies --set DEFAULT:SHA1; then
+    if ! update-crypto-policies --set DEFAULT:SHA1 >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to allow SHA1 package signatures." "Manually allow SHA1 package signatures using 'sudo update-crypto-policies --set DEFAULT:SHA1' and run the script again."
         exit 1
     fi
@@ -193,7 +195,7 @@ if getenforce | grep -Fq 'Enforcing'; then
     fi
     # Return back to the default crypto policy
     handleStep "Returning back to the default crypto policy..."
-    if ! update-crypto-policies --set DEFAULT; then
+    if ! update-crypto-policies --set DEFAULT >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to return back to the default crypto policy." "Manually return back to the default crypto policy using 'sudo update-crypto-policies --set DEFAULT' and run the script again."
         exit 1
     fi
@@ -202,6 +204,19 @@ else
     handleSuccess "SELinux is disabled."
 fi
 handleSuccess "SELinux policy for k3s is installed successfully."
+
+# Disable nm-cloud-setup.service
+handleCheck "Checking if nm-cloud-setup.service is enabled..."
+if systemctl list-units --full --all | grep -Fq 'nm-cloud-setup.service'; then
+    handleStep "nm-cloud-setup.service is enabled. Disabling nm-cloud-setup.service..."
+    if ! systemctl disable --now nm-cloud-setup.service >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to disable nm-cloud-setup.service." "Manually disable nm-cloud-setup.service using 'sudo systemctl disable --now nm-cloud-setup.service' and run the script again."
+        exit 1
+    fi
+    handleSuccess "nm-cloud-setup.service is disabled successfully."
+else
+    handleSuccess "nm-cloud-setup.service is already disabled."
+fi
 
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
