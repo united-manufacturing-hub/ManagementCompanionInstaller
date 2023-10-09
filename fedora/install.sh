@@ -152,7 +152,6 @@ if ! command -v curl >> /tmp/mgmt_install.log 2>&1; then
 fi
 handleSuccess "curl is installed successfully."
 
-
 # Ensure /usr/local/bin is in the PATH
 handleCheck "Checking if /usr/local/bin is in the PATH..."
 if [[ ! ":$PATH:" == *":/usr/local/bin:"* ]]; then
@@ -193,7 +192,7 @@ fi
 handleCheck "Checking for kubectl..."
 if ! command -v kubectl >> /tmp/mgmt_install.log 2>&1; then
     handleStep "kubectl is not installed. Installing kubectl..."
-    curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl
+    curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl >> /tmp/mgmt_install.log 2>&1
     if [[ $? -ne 0 ]]; then
         handleError "Failed to download kubectl." "Check your network connection or download kubectl manually from https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl, make it executable, and move it to /usr/local/bin/ and run the script again or install kubectl manually using 'sudo yum install kubectl' and run the script again."
         exit 1
