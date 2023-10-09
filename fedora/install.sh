@@ -1,10 +1,48 @@
 #!/bin/bash
 
+# Customizable Parameters
 export INSTALL_K3S_VERSION=v1.28.2+k3s1
 export INSTALL_KUBECTL_VERSION=v1.28.2
+TIMEOUT=300  # 5 minutes
+INTERVAL=5   # check every 5 seconds
+
+function handleError {
+    echo -e "❌ Error: $1"
+    echo -e "💡 Tip: $2"
+    exit 1
+}
+
+function handleSuccess {
+    echo -e "✅ $1"
+}
+
+function handleStep {
+    echo -e "🔧 $1"
+}
+
+function handleCheck {
+    echo -e "🔍 $1"
+}
+
+function handleWarning {
+    echo -e "⚠️ $1"
+}
+
+function handleSleep {
+    echo -e "⏳ $1"
+    sleep $2
+}
+
+function handleSecurity {
+    echo -e "🔓 $1"
+}
+
+    function handleInstalled {
+  echo -e "🎉 $1"
+}
 
 # Summary of changes to be done #600
-echo -e "🔍 This script will perform the following actions on your system:"
+handleCheck "This script will perform the following actions on your system:"
 echo -e "1️⃣ Check for necessary prerequisites."
 echo -e "2️⃣ Install k3s and kubectl if not already installed."
 echo -e "3️⃣ Disable the firewall (as per k3s documentation for RHEL/CentOS/Fedora)."
@@ -14,199 +52,175 @@ echo -e "4️⃣ Install or overwrite MgmtCompanion."
 read -p "Do you want to continue? (Y/n): " confirm
 confirm=${confirm:-Y}
 if [[ ! $confirm =~ ^[Yy]$ ]]; then
-    echo -e "❌ Aborting..."
+    handleError "Aborting..." "You can run the script again to install MgmtCompanion."
     exit 1
 fi
-echo -e "✅ Beginning installation..."
+handleSuccess "Beginning installation..."
 
 # The install script shall check if executed as root user, and abort if not #572
-echo -e "🔍 Checking for root..."
+handleCheck "Checking for root..."
 if [[ $EUID -ne 0 ]]; then
-   echo -e "❌ Error: This script must be run as root."
-   echo -e "💡 Tip: Use 'sudo ./scriptname.sh' to run it as root or use the following command:"
-   echo -e "curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
-   exit 1
+    handleError "This script must be run as root." "Use 'sudo ./scriptname.sh' to run it as root or use the following command: curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
 fi
-echo -e "✅ Root user detected."
+handleSuccess "Root user detected."
 
 # The install script shall check if the authentication token is present #574
-echo -e "🔍 Checking for authentication token..."
+handleCheck "Checking for authentication token..."
 if [[ -z "$AUTH_TOKEN" ]]; then
-    echo -e "❌ Error: Authentication token is not present."
-    echo -e "💡 Tip: Ensure you've included the AUTH_TOKEN in your command. Example:"
-    echo -e "curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
-    exit 1
+    handleError "Authentication token is not present." "Ensure you've included the AUTH_TOKEN in your command. Example: curl -sSL https://management.umh.app/static/fedora/install.sh | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
 fi
-echo -e "✅ Authentication token detected."
+handleSuccess "Authentication token detected."
 
 # Validate AUTH_TOKEN format
-echo -e "🔍 Validating authentication token format..."
+handleCheck "Validating authentication token format..."
 if [[ ! "$AUTH_TOKEN" =~ ^[a-fA-F0-9]{64}$ ]]; then
-    echo -e "❌ Error: Invalid authentication token format."
-    echo -e "💡 Tip: Ensure your authentication token is a 256-bit hex-encoded string."
+    handleError "Invalid authentication token format." "Ensure your authentication token is a 256-bit hex-encoded string."
     exit 1
 fi
-echo -e "✅ Authentication token format is valid."
+handleSuccess "Authentication token format is valid."
 
 # Check if the RHEL machine is registered
-echo -e "🔍 Checking if your RHEL machine is registered..."
+handleCheck "Checking if your RHEL machine is registered..."
 if ! subscription-manager status &> /dev/null; then
-    echo -e "❌ Error: Your RHEL machine is not registered."
-    echo -e "💡 Tip: Register your machine with 'subscription-manager register' and run the script again."
+    handleError "Your RHEL machine is not registered." "Register your machine with 'subscription-manager register' and run the script again."
     exit 1
 fi
-echo -e "✅ Your RHEL machine is registered."
+handleSuccess "Your RHEL machine is registered."
 
 # Check RHEL version
-echo -e "🔍 Checking RHEL version..."
+handleCheck "Checking RHEL version..."
 RHEL_VERSION=$(grep -oP '(?<= )[0-9]+(?=\.?)' /etc/redhat-release | head -1)
 if [[ ! "$RHEL_VERSION" =~ ^(7|8|9)$ ]]; then
-    echo "❌ Error: Unsupported RHEL version. Supported versions are 7, 8, and 9."
-    echo "💡 Tip: Check your RHEL version with 'cat /etc/redhat-release' and upgrade to a supported version."
+    handleError "Unsupported RHEL version. Supported versions are 7, 8, and 9." "Check your RHEL version with 'cat /etc/redhat-release' and upgrade to a supported version."
     exit 1
 fi
-echo -e "✅ RHEL version $RHEL_VERSION is supported."
+handleSuccess "RHEL version $RHEL_VERSION is supported."
 
 # Ensure curl is installed (this should never happen, as we use curl to download the script, but just in case)
-echo -e "🔍 Checking for curl..."
+handleCheck "Checking for curl..."
 if ! command -v curl &> /dev/null; then
-    echo -e "🔧 curl is not installed. Installing curl..."
+    handleStep "curl is not installed. Installing curl..."
     if ! yum install -y curl; then
-        echo -e "❌ Error: Failed to install curl."
-        echo -e "💡 Tip: Check your network connection or install curl manually using 'sudo yum install curl' and run the script again."
+        handleError "Failed to install curl." "Check your network connection or install curl manually using 'sudo yum install curl' and run the script again."
         exit 1
     fi
 fi
-echo -e "✅ curl is installed successfully."
+handleSuccess "curl is installed successfully."
 
 # The install script shall check if k3s is installed, and if not install it #575
-echo -e "🔍 Checking for k3s..."
+handleCheck "Checking for k3s..."
 if ! command -v k3s &> /dev/null; then
-    echo -e "🔧 k3s is not installed. Installing k3s..."
+    handleStep "k3s is not installed. Installing k3s..."
     curl -sfL https://get.k3s.io -o k3s-install.sh
     if [[ $? -ne 0 ]]; then
-        echo "Error: Failed to download k3s-install.sh."
-        echo "Tip: Check your network connection or download k3s-install.sh manually from https://get.k3s.io and run the script again."
+        handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
         exit 1
     fi
     if ! bash k3s-install.sh; then
-        echo "Error: Failed to install k3s."
-        echo "Tip: Check the logs above for any error messages."
+        handleError "Failed to install k3s." "Check the logs above for any error messages."
         exit 1
     fi
     rm k3s-install.sh
-    echo -e "✅ k3s is installed successfully."
+    handleSuccess "k3s is installed successfully."
 else
-    echo -e "✅ k3s is already installed."
+    handleSuccess "k3s is already installed."
 fi
 
 # The install script shall check if kubectl is installed or install it #576
-echo -e "🔍 Checking for kubectl..."
+handleCheck "Checking for kubectl..."
 if ! command -v kubectl &> /dev/null; then
-    echo -e "🔧 kubectl is not installed. Installing kubectl..."
+    handleStep "kubectl is not installed. Installing kubectl..."
     curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl
     if [[ $? -ne 0 ]]; then
-        echo "Error: Failed to download kubectl."
-        echo "Tip: Check your network connection or download kubectl manually from https://kubernetes.io/docs/tasks/tools/install-kubectl/ and place it in your PATH."
+        handleError "Failed to download kubectl." "Check your network connection or download kubectl manually from https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl, make it executable, and move it to /usr/local/bin/ and run the script again or install kubectl manually using 'sudo yum install kubectl' and run the script again."
         exit 1
     fi
     chmod +x kubectl
     mv kubectl /usr/local/bin/
-    echo -e "✅ kubectl is installed successfully."
+    handleSuccess "kubectl is installed successfully."
 else
-    echo -e "✅ kubectl is already installed."
+    handleSuccess "kubectl is already installed."
 fi
 
 # The install script shall disable the firewall for RHEL/CentOS/Fedora as per k3s documentation
-echo -e "🔓 Disabling the firewall..."
+handleSecurity "Disabling the firewall..."
 if ! systemctl disable --now firewalld; then
-    echo -e "❌ Error: Failed to disable the firewall."
-    echo -e "💡 Tip: Manually disable the firewall using 'sudo systemctl disable --now firewalld' and run the script again."
+    handleError "Failed to disable the firewall." "Manually disable the firewall using 'sudo systemctl disable --now firewalld' and run the script again."
     exit 1
 fi
-echo -e "✅ Firewall disabled successfully."
+handleSuccess "Firewall disabled successfully."
 
 # The install script shall detect if MgmgCompanion is already installed #577
-echo -e "🔍 Checking for existing MgmtCompanion installation..."
+handleCheck "Checking for existing MgmtCompanion installation..."
 if kubectl get namespace mgmtcompanion &> /dev/null; then
-    echo -e "⚠️ MgmtCompanion is already installed."
+    handleWarning "MgmtCompanion is already installed."
 
     # If the install script detects an existing MgmtCompanion installation it shall ask the user if he wants to overwrite or abort #578
     read -p "Do you want to overwrite the existing installation? (y/N): " overwrite_confirm
     overwrite_confirm=${overwrite_confirm:-N}
     if [[ ! $overwrite_confirm =~ ^[Yy]$ ]]; then
-        echo -e "❌ Aborting..."
+        handleError "Aborting..." "You can run the script again to install MgmtCompanion."
         exit 1
     fi
-    echo -e "🔧 Overwriting existing installation..."
+    handleStep "Overwriting existing installation..."
     # Remove namespace and all resources inside it
     if kubectl delete namespace mgmtcompanion; then
-        echo -e "✅ Existing installation removed successfully."
+        handleSuccess "Existing installation removed successfully."
     else
-        echo -e "❌ Error: Failed to remove existing installation."
-        echo -e "💡 Tip: Manually remove the existing installation using 'kubectl delete namespace mgmtcompanion' and run the script again."
+        handleError "Failed to remove existing installation." "Manually remove the existing installation using 'kubectl delete namespace mgmtcompanion' and run the script again."
         exit 1
     fi
 fi
 
 # Install MgmtCompanion
-echo -e "🔧 Installing MgmtCompanion..."
+handleStep "Installing MgmtCompanion..."
 ## Create namespace
 if ! kubectl create namespace mgmtcompanion; then
-    echo -e "❌ Error: Failed to create namespace mgmtcompanion."
-    echo -e "💡 Tip: Check the logs above for any error messages."
+    handleError "Failed to create namespace mgmtcompanion." "Check the logs above for any error messages."
     exit 1
 fi
-echo -e "✅ Namespace mgmtcompanion created successfully."
+handleSuccess "Namespace mgmtcompanion created successfully."
 
 ## Download the MgmtCompanion manifests (configmap, secret, statefulset)
-echo -e "🔧 Downloading MgmtCompanion manifests..."
+handleStep "Downloading MgmtCompanion manifests..."
 if ! curl -sSL https://management.umh.app/static/kubernetes/configmap.yaml -o /tmp/configmap.yaml; then
-    echo -e "❌ Error: Failed to download configmap.yaml."
-    echo -e "💡 Tip: Check your network connection"
+    handleError "Failed to download configmap.yaml." "Check your network connection"
     exit 1
 fi
-echo -e "✅ configmap.yaml downloaded successfully."
+handleSuccess "configmap.yaml downloaded successfully."
 if ! curl -sSL https://management.umh.app/static/kubernetes/secret.yaml -o /tmp/secret.yaml; then
-    echo -e "❌ Error: Failed to download secret.yaml."
-    echo -e "💡 Tip: Check your network connection"
+    handleError "Failed to download secret.yaml." "Check your network connection"
     exit 1
 fi
-echo -e "✅ secret.yaml downloaded successfully."
+handleSuccess "secret.yaml downloaded successfully."
 if ! curl -sSL https://management.umh.app/static/kubernetes/statefulset.yaml -o /tmp/statefulset.yaml; then
-    echo -e "❌ Error: Failed to download statefulset.yaml."
-    echo -e "💡 Tip: Check your network connection"
+    handleError "Failed to download statefulset.yaml." "Check your network connection"
     exit 1
 fi
-echo -e "✅ statefulset.yaml downloaded successfully."
-echo -e "✅ MgmtCompanion manifests downloaded successfully."
+handleSuccess "statefulset.yaml downloaded successfully."
+handleSuccess "MgmtCompanion manifests downloaded successfully."
 
 ## Apply the MgmtCompanion manifests
-echo -e "🔧 Applying MgmtCompanion manifests..."
+handleStep "Applying MgmtCompanion manifests..."
 if ! kubectl apply -f /tmp/configmap.yaml -n mgmtcompanion; then
-    echo -e "❌ Error: Failed to apply configmap.yaml."
-    echo -e "💡 Tip: Check the logs above for any error messages."
+    handleError "Failed to apply configmap.yaml." "Check the logs above for any error messages."
     exit 1
 fi
-echo -e "✅ configmap.yaml applied successfully."
+handleSuccess "configmap.yaml applied successfully."
 if ! kubectl apply -f /tmp/secret.yaml -n mgmtcompanion; then
-    echo -e "❌ Error: Failed to apply secret.yaml."
-    echo -e "💡 Tip: Check the logs above for any error messages."
+    handleError "Failed to apply secret.yaml." "Check the logs above for any error messages."
     exit 1
 fi
-echo -e "✅ secret.yaml applied successfully."
+handleSuccess "secret.yaml applied successfully."
 if ! kubectl apply -f /tmp/statefulset.yaml -n mgmtcompanion; then
-    echo -e "❌ Error: Failed to apply statefulset.yaml."
-    echo -e "💡 Tip: Check the logs above for any error messages."
+    handleError "Failed to apply statefulset.yaml." "Check the logs above for any error messages."
     exit 1
 fi
-echo -e "✅ statefulset.yaml applied successfully."
-echo -e "✅ MgmtCompanion manifests applied successfully."
+handleSuccess "statefulset.yaml applied successfully."
+handleSuccess "MgmtCompanion manifests applied successfully."
 
 ## Wait a few seconds for the pod to start
-echo -e "⏳ Waiting for the pod to start..."
-sleep 5
-echo -e "⌛ Checking for successful installation..."
+handleSleep "Waiting for kubernetes to finalize the installation..." 5
 
 # Check for successful installation by querying k3s to check if the following is true (all resources are inside the mgmtcompanion namespace)
 # - statefulset: mgmtcompanion
@@ -220,23 +234,20 @@ if [[ $(kubectl get statefulsets -n mgmtcompanion --field-selector metadata.name
     TIMEOUT=300  # 5 minutes
     INTERVAL=5   # check every 5 seconds
     ELAPSED=0
-    echo -e "🔄 Waiting for MgmtCompanion pod to be running..."
+    handleSleep "Waiting for MgmtCompanion pod to be running..." 5
     while [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') != "Running" && $ELAPSED -lt $TIMEOUT ]]; do
-        echo -e "⏳ $ELAPSED seconds elapsed, timeout is $TIMEOUT seconds..."
-        sleep $INTERVAL
+        handleSleep "Waiting for MgmtCompanion pod to be running..." $INTERVAL
         ELAPSED=$((ELAPSED + INTERVAL))
     done
     if [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') == "Running" ]]; then
-        echo -e "✅ Installation successful."
+        handleSuccess "Installation successful."
     else
-        echo -e "❌ Error: Installation failed - mgmtcompanion pod is not running."
-        echo -e "💡 Tip: Check the pod's logs with 'kubectl logs $mgmtcompanion_pod -n mgmtcompanion' for more details."
+        handleError "Installation failed - mgmtcompanion pod is not running." "Check the pod's logs with 'kubectl logs $mgmtcompanion_pod -n mgmtcompanion' for more details."
         exit 1
     fi
 else
-    echo -e "❌ Error: Installation failed - Required resources are missing in the mgmtcompanion namespace."
-    echo -e "💡 Tip: Verify the installation steps and ensure all necessary resources are created."
+    handleError "Installation failed - Required resources are missing in the mgmtcompanion namespace." "Verify the installation steps and ensure all necessary resources are created."
     exit 1
 fi
 
-echo -e "🎉 MgmtCompanion is installed successfully."
+handleInstalled "MgmtCompanion is installed successfully."
