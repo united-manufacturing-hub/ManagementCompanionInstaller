@@ -6,40 +6,49 @@ export INSTALL_KUBECTL_VERSION=v1.28.2
 TIMEOUT=300  # 5 minutes
 INTERVAL=5   # check every 5 seconds
 
+function logMessage {
+    local emoji=$1
+    local message=$2
+    echo -e "$emoji $message" | tee -a /tmp/mgmt_install.log
+}
+
 function handleError {
-    echo -e "❌ Error: $1"
-    echo -e "💡 Tip: $2"
+    logMessage "❌ Error:" "$1"
+    logMessage "💡 Tip:" "$2"
     exit 1
 }
 
 function handleSuccess {
-    echo -e "✅ $1"
+    logMessage "✅" "$1"
 }
 
 function handleStep {
-    echo -e "🔧 $1"
+    logMessage "🔧" "$1"
 }
 
 function handleCheck {
-    echo -e "🔍 $1"
+    logMessage "🔍" "$1"
 }
 
 function handleWarning {
-    echo -e "⚠️ $1"
+    logMessage "⚠️" "$1"
 }
 
 function handleSleep {
-    echo -e "⏳ $1"
+    logMessage "⏳" "$1"
     sleep $2
 }
 
 function handleSecurity {
-    echo -e "🔓 $1"
+    logMessage "🔓" "$1"
 }
 
-    function handleInstalled {
-  echo -e "🎉 $1"
+function handleInstalled {
+    logMessage "🎉" "$1"
 }
+
+
+rm -f /tmp/mgmt_install.log
 
 # Summary of changes to be done #600
 handleCheck "This script will perform the following actions on your system:"
@@ -71,6 +80,22 @@ if [[ -z "$AUTH_TOKEN" ]]; then
 fi
 handleSuccess "Authentication token detected."
 
+# The install script shall check if there is a internet connection to management.umh.app #573
+handleCheck "Checking for internet connection..."
+## Check if management.umh.app is resolvable (dns)
+handleStep "Checking if management.umh.app is resolvable..."
+if ! host management.umh.app >> /tmp/mgmt_install.log 2>&1; then
+    handleError "management.umh.app is not resolvable." "Check your network connection or try again later."
+    exit 1
+fi
+## Check if management.umh.app is reachable (http)
+handleStep "Checking if management.umh.app is reachable..."
+if ! curl -sSL https://management.umh.app/api >> /tmp/mgmt_install.log 2>&1; then
+    handleError "management.umh.app is not reachable." "Check your network connection or try again later."
+    exit 1
+fi
+handleSuccess "management.umh.app is resolvable."
+
 # Validate AUTH_TOKEN format
 handleCheck "Validating authentication token format..."
 if [[ ! "$AUTH_TOKEN" =~ ^[a-fA-F0-9]{64}$ ]]; then
@@ -81,7 +106,7 @@ handleSuccess "Authentication token format is valid."
 
 # Check if the RHEL machine is registered
 handleCheck "Checking if your RHEL machine is registered..."
-if ! subscription-manager status &> /dev/null; then
+if ! subscription-manager status >> /tmp/mgmt_install.log 2>&1; then
     handleError "Your RHEL machine is not registered." "Register your machine with 'subscription-manager register' and run the script again."
     exit 1
 fi
@@ -98,7 +123,7 @@ handleSuccess "RHEL version $RHEL_VERSION is supported."
 
 # Ensure curl is installed (this should never happen, as we use curl to download the script, but just in case)
 handleCheck "Checking for curl..."
-if ! command -v curl &> /dev/null; then
+if ! command -v curl >> /tmp/mgmt_install.log 2>&1; then
     handleStep "curl is not installed. Installing curl..."
     if ! yum install -y curl; then
         handleError "Failed to install curl." "Check your network connection or install curl manually using 'sudo yum install curl' and run the script again."
@@ -109,7 +134,7 @@ handleSuccess "curl is installed successfully."
 
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
-if ! command -v k3s &> /dev/null; then
+if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     handleStep "k3s is not installed. Installing k3s..."
     curl -sfL https://get.k3s.io -o k3s-install.sh
     if [[ $? -ne 0 ]]; then
@@ -128,7 +153,7 @@ fi
 
 # The install script shall check if kubectl is installed or install it #576
 handleCheck "Checking for kubectl..."
-if ! command -v kubectl &> /dev/null; then
+if ! command -v kubectl >> /tmp/mgmt_install.log 2>&1; then
     handleStep "kubectl is not installed. Installing kubectl..."
     curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl
     if [[ $? -ne 0 ]]; then
@@ -152,7 +177,7 @@ handleSuccess "Firewall disabled successfully."
 
 # The install script shall detect if MgmgCompanion is already installed #577
 handleCheck "Checking for existing MgmtCompanion installation..."
-if kubectl get namespace mgmtcompanion &> /dev/null; then
+if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
     handleWarning "MgmtCompanion is already installed."
 
     # If the install script detects an existing MgmtCompanion installation it shall ask the user if he wants to overwrite or abort #578
