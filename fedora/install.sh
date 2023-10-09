@@ -6,10 +6,10 @@ export INSTALL_KUBECTL_VERSION=v1.28.2
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 export MANAGEMENT_URL=https://management.umh.app
 export API_URL=$MANAGEMENT_URL/api
-export CONFIGMAP_URL=$MANAGEMENT_URL/static/kubernetes/configmap.yaml
-export SECRET_URL=$MANAGEMENT_URL/static/kubernetes/secret.yaml
-export STATEFULSET_URL=$MANAGEMENT_URL/static/kubernetes/statefulset.yaml
-export INSTALLER_URL=$MANAGEMENT_URL/static/fedora/install.sh
+export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
+export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
+export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
+export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
 TIMEOUT=300  # 5 minutes
 INTERVAL=5   # check every 5 seconds
 
