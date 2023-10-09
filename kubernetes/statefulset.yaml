@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mgmtcompanion
+spec:
+  serviceName: "mgmtcompanion"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mgmtcompanion
+  template:
+    metadata:
+      labels:
+        app: mgmtcompanion
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: mgmtcompanion
+          image: ghcr.io/united-manufacturing-hub/mgmtcompanion:__VERSION__
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
