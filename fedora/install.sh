@@ -9,6 +9,8 @@ export API_URL=$MANAGEMENT_URL/api
 export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
 export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
 export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
+export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
+export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
 export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
 export IMAGE_VERSION=latest
 TIMEOUT=60  # 1 minute
@@ -86,12 +88,16 @@ if [[ -n $CUSTOM_API_URL ]]; then
     export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
     export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
     export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
+    export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
+    export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
     export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
     echo "MANAGEMENT_URL: $MANAGEMENT_URL"
     echo "API_URL: $API_URL"
     echo "CONFIGMAP_URL: $CONFIGMAP_URL"
     echo "SECRET_URL: $SECRET_URL"
     echo "STATEFULSET_URL: $STATEFULSET_URL"
+    echo "ROLE_URL: $ROLE_URL"
+    echo "ROLE_BINDING_URL: $ROLE_BINDING_URL"
     echo "INSTALLER_URL: $INSTALLER_URL"
 fi
 
@@ -121,7 +127,7 @@ handleStep "Beginning installation..."
 # The install script shall check if executed as root user, and abort if not #572
 handleCheck "Checking for root..."
 if [[ $EUID -ne 0 ]]; then
-    handleError "This script must be run as root." "Use 'sudo ./scriptname.sh' to run it as root or use the following command: curl -sSL $INSTALLER_URL | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
+    handleError "This script must be run as root." "Use 'sudo ./install.sh' to run it as root"
 fi
 handleSuccess "Root user detected."
 
@@ -145,7 +151,7 @@ handleSuccess "RHEL version $RHEL_VERSION is supported."
 # The install script shall check if the authentication token is present #574
 handleCheck "Checking for authentication token..."
 if [[ -z "$AUTH_TOKEN" ]]; then
-    handleError "Authentication token is not present." "Ensure you've included the AUTH_TOKEN in your command. Example: curl -sSL $INSTALLER_URL | AUTH_TOKEN=<instance-installation-token> sudo -E bash"
+    handleError "Authentication token is not present." "Ensure you've included the AUTH_TOKEN in your command."
 fi
 handleSuccess "Authentication token detected."
 
@@ -354,6 +360,14 @@ if ! curl -sSL $STATEFULSET_URL -o /tmp/statefulset.yaml >> /tmp/mgmt_install.lo
     exit 1
 fi
 handleSuccess "statefulset.yaml downloaded successfully."
+if ! curl -sSL $ROLE_URL -o /tmp/role.yaml >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Failed to download role.yaml." "Check your network connection"
+    exit 1
+fi
+if ! curl -sSL $ROLE_BINDING_URL -o /tmp/role_binding.yaml >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Failed to download role_binding.yaml." "Check your network connection"
+    exit 1
+fi
 handleSuccess "MgmtCompanion manifests downloaded successfully."
 
 # Encode the AUTH_TOKEN to base64 as Kubernetes secrets require base64 encoded values
@@ -372,6 +386,16 @@ fi
 handleSuccess "configmap.yaml applied successfully."
 if ! kubectl apply -f /tmp/secret.yaml -n mgmtcompanion; then
     handleError "Failed to apply secret.yaml." "Check the logs above for any error messages."
+    exit 1
+fi
+handleStep "validating secret"
+# Verify the auth-token field in the secret
+auth_token_value=$(kubectl get secret mgmtcompanion-secret -n mgmtcompanion -o jsonpath='{.data.auth-token}' | base64 --decode)
+
+if [[ "$auth_token_value" != "null" && -n "$auth_token_value" ]]; then
+    handleSuccess "auth-token is set successfully in mgmtcompanion-secret."
+else
+    handleError "auth-token is not set or is null in mgmtcompanion-secret." "Please check the secret configuration and try again."
     exit 1
 fi
 handleSuccess "secret.yaml applied successfully."
