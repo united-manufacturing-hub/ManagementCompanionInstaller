@@ -76,7 +76,7 @@ function check_pod_readiness {
 }
 
 rm -f /tmp/mgmt_install.log
-rn -f /tmp/configmap.yaml
+rm -f /tmp/configmap.yaml
 rm -f /tmp/secret.yaml
 rm -f /tmp/statefulset.yaml
 clear
@@ -134,17 +134,15 @@ handleSuccess "Root user detected."
 # Check if the RHEL machine is registered
 handleCheck "Checking if your RHEL machine is registered..."
 if ! subscription-manager status >> /tmp/mgmt_install.log 2>&1; then
-    handleError "Your RHEL machine is not registered." "Register your machine with 'subscription-manager register' and run the script again."
-    exit 1
+    handleError "Failed to check subscription status." "Check your subscription status manually using 'subscription-manager status'."
 fi
 handleSuccess "Your RHEL machine is registered."
 
 # Check RHEL version
 handleCheck "Checking RHEL version..."
 RHEL_VERSION=$(grep -oP '(?<= )[0-9]+(?=\.?)' /etc/redhat-release | head -1)
-if [[ ! "$RHEL_VERSION" =~ ^(7|8|9)$ ]]; then
-    handleError "Unsupported RHEL version. Supported versions are 7, 8, and 9." "Check your RHEL version with 'cat /etc/redhat-release' and upgrade to a supported version."
-    exit 1
+if [[ -z "$RHEL_VERSION" ]]; then
+    handleError "Failed to determine RHEL version." "Check the contents of /etc/redhat-release and try again."
 fi
 handleSuccess "RHEL version $RHEL_VERSION is supported."
 
@@ -203,9 +201,8 @@ handleSuccess "curl is installed successfully."
 handleCheck "Checking if /usr/local/bin is in the PATH..."
 if [[ ! ":$PATH:" == *":/usr/local/bin:"* ]]; then
     handleStep "/usr/local/bin is not in the PATH. Adding it to the PATH..."
-    if ! echo "export PATH=$PATH:/usr/local/bin" >> ~/.bashrc; then
-        handleError "Failed to add /usr/local/bin to the PATH." "Manually add /usr/local/bin to the PATH using 'echo \"export PATH=\$PATH:/usr/local/bin\" >> ~/.bashrc' and run the script again."
-        exit 1
+    if ! echo "export PATH=$PATH:/usr/local/bin" >> ~/.bashrc >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to update PATH in ~/.bashrc." "Check the file permissions and try again."
     fi
     handleSuccess "/usr/local/bin is added to the PATH successfully."
 else
@@ -214,7 +211,10 @@ fi
 
 # Source the .bashrc file to update the PATH
 handleCheck "Sourcing the .bashrc file..."
-source ~/.bashrc
+if ! source ~/.bashrc >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Failed to source ~/.bashrc." "Try sourcing ~/.bashrc manually."
+fi
+
 
 # Check if SELinux is enabled
 handleCheck "Checking if SELinux is enabled..."
@@ -267,17 +267,19 @@ fi
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     handleStep "k3s is not installed. Installing k3s..."
-    curl -sSL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1
-    if [[ $? -ne 0 ]]; then
-        handleError "Failed to download k3s-install.sh." "Check your network connection or download k3s-install.sh & install manually from https://get.k3s.io and run the script again."
-        exit 1
+    if ! curl -sSL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to download k3s-install.sh." "Check your network connection and try again."
     fi
-    chmod +x k3s-install.sh
+    if ! chmod +x k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to make k3s-install.sh executable." "Check the file permissions and try again."
+    fi
     if ! bash k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install k3s." "Check the logs above for any error messages."
         exit 1
     fi
-    rm k3s-install.sh
+    if ! rm k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to remove k3s-install.sh." "Check the file permissions and try again."
+    fi
     handleSuccess "k3s is installed successfully."
 else
     handleSuccess "k3s is already installed."
@@ -287,13 +289,15 @@ fi
 handleCheck "Checking for kubectl..."
 if ! command -v kubectl >> /tmp/mgmt_install.log 2>&1; then
     handleStep "kubectl is not installed. Installing kubectl..."
-    curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl >> /tmp/mgmt_install.log 2>&1
-    if [[ $? -ne 0 ]]; then
-        handleError "Failed to download kubectl." "Check your network connection or download kubectl manually from https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl, make it executable, and move it to /usr/local/bin/ and run the script again or install kubectl manually using 'sudo yum install kubectl' and run the script again."
-        exit 1
+    if ! curl -LO "https://dl.k8s.io/release/$INSTALL_KUBECTL_VERSION/bin/linux/amd64/kubectl" -o kubectl >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to download kubectl." "Check your network connection and try again."
     fi
-    mv kubectl /usr/local/bin/
-    chmod +x /usr/local/bin/kubectl
+    if ! mv kubectl /usr/local/bin/ >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to move kubectl to /usr/local/bin/." "Check the file permissions and try again."
+    fi
+    if ! chmod +x /usr/local/bin/kubectl >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to make kubectl executable." "Check the file permissions and try again."
+    fi
     handleSuccess "kubectl is installed successfully."
 else
     handleSuccess "kubectl is already installed."
@@ -374,8 +378,11 @@ handleSuccess "MgmtCompanion manifests downloaded successfully."
 handleStep "Encoding the authentication token..."
 encoded_auth_token=$(echo -n "$AUTH_TOKEN" | base64)
 # Replace the auth-token value in the downloaded secret.yaml file
-sed -i "s/auth-token: \"null\"/auth-token: \"$encoded_auth_token\"/" /tmp/secret.yaml
-handleSuccess "Authentication token encoded successfully."
+if ! sed -i 's|auth-token: "null"|auth-token: "'"$encoded_auth_token"'"|' /tmp/secret.yaml >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Failed to update auth-token in secret.yaml." "Check /tmp/mgmt_install.log for more details."
+    exit 1
+fi
+handleSuccess "auth-token updated in secret.yaml successfully."
 
 ## Apply the MgmtCompanion manifests
 handleStep "Applying MgmtCompanion manifests..."
@@ -400,7 +407,11 @@ else
 fi
 handleSuccess "secret.yaml applied successfully."
 # Use sed to replace the image version in statefulset.yaml (placeholder is __VERSION__)
-sed -i "s/__VERSION__/$IMAGE_VERSION/g" /tmp/statefulset.yaml
+if ! sed -i "s/__VERSION__/$IMAGE_VERSION/g" /tmp/statefulset.yaml >> /tmp/mgmt_install.log 2>&1; then
+    handleError "Failed to update image version in statefulset.yaml." "Check /tmp/mgmt_install.log for more details."
+    exit 1
+fi
+handleSuccess "Image version updated in statefulset.yaml successfully."
 if ! kubectl apply -f /tmp/statefulset.yaml -n mgmtcompanion; then
     handleError "Failed to apply statefulset.yaml." "Check the logs above for any error messages."
     exit 1
