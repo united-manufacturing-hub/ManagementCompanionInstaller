@@ -390,7 +390,7 @@ if ! kubectl apply -f /tmp/secret.yaml -n mgmtcompanion; then
 fi
 # Install jq if not already installed
 if ! command -v jq > /dev/null 2>&1; then
-    if ! yum install -y j >> /tmp/mgmt_install.log 2>&1; then
+    if ! yum install -y jq >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install jq." "Check your network connection or install jq manually using 'sudo yum install jq' and run the script again."
     fi
 fi
