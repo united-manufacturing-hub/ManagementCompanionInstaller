@@ -11,7 +11,7 @@ export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
 export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
 export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
 export IMAGE_VERSION=latest
-TIMEOUT=300  # 5 minutes
+TIMEOUT=60  # 1 minute
 INTERVAL=5   # check every 5 seconds
 
 
@@ -66,6 +66,12 @@ function handleInstalled {
     logMessage "🎉" "$1"
 }
 
+# Define a function to check pod readiness
+function check_pod_readiness {
+    local pod_name=$1
+    local namespace=$2
+    kubectl get pod "$pod_name" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"
+}
 
 rm -f /tmp/mgmt_install.log
 rn -f /tmp/configmap.yaml
@@ -350,6 +356,13 @@ fi
 handleSuccess "statefulset.yaml downloaded successfully."
 handleSuccess "MgmtCompanion manifests downloaded successfully."
 
+# Encode the AUTH_TOKEN to base64 as Kubernetes secrets require base64 encoded values
+handleStep "Encoding the authentication token..."
+encoded_auth_token=$(echo -n "$AUTH_TOKEN" | base64)
+# Replace the auth-token value in the downloaded secret.yaml file
+sed -i "s/auth-token: \"null\"/auth-token: \"$encoded_auth_token\"/" /tmp/secret.yaml
+handleSuccess "Authentication token encoded successfully."
+
 ## Apply the MgmtCompanion manifests
 handleStep "Applying MgmtCompanion manifests..."
 if ! kubectl apply -f /tmp/configmap.yaml -n mgmtcompanion; then
@@ -381,26 +394,24 @@ handleSleep "Waiting for kubernetes to finalize the installation..." 5
 if [[ $(kubectl get statefulsets -n mgmtcompanion --field-selector metadata.name=mgmtcompanion -o jsonpath='{.items[*].metadata.name}') == "mgmtcompanion" ]] &&
    [[ $(kubectl get secrets -n mgmtcompanion --field-selector metadata.name=mgmtcompanion-secret -o jsonpath='{.items[*].metadata.name}') == "mgmtcompanion-secret" ]] &&
    [[ $(kubectl get configmaps -n mgmtcompanion --field-selector metadata.name=mgmtcompanion-config -o jsonpath='{.items[*].metadata.name}') == "mgmtcompanion-config" ]]; then
-
     mgmtcompanion_pod=$(kubectl get pods -n mgmtcompanion --selector=statefulset.kubernetes.io/pod-name=mgmtcompanion-0 -o jsonpath='{.items[*].metadata.name}')
-    TIMEOUT=300  # 5 minutes
-    INTERVAL=5   # check every 5 seconds
     ELAPSED=0
-    handleSleep "Waiting for MgmtCompanion pod ($mgmtcompanion_pod) to be running..." 5
-    while [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') != "Running" && $ELAPSED -lt $TIMEOUT ]]; do
-        handleSleep "Waiting for MgmtCompanion pod to be running..." $INTERVAL
-        kubectl get pods -n mgmtcompanion $mgmtcompanion_pod
+    handleSleep "Waiting for MgmtCompanion pod ($mgmtcompanion_pod) to be running and ready..." 5
+    while ! check_pod_readiness $mgmtcompanion_pod mgmtcompanion && [ $ELAPSED -lt $TIMEOUT ]; do
+        handleSleep "Waiting for MgmtCompanion pod to be ready..." $INTERVAL
         ELAPSED=$((ELAPSED + INTERVAL))
     done
-    if [[ $(kubectl get pod $mgmtcompanion_pod -n mgmtcompanion -o jsonpath='{.status.phase}') == "Running" ]]; then
-        handleSuccess "Installation successful."
-    else
-        handleError "Installation failed - mgmtcompanion pod is not running." "Check the pod's logs with 'kubectl logs $mgmtcompanion_pod -n mgmtcompanion' for more details."
+
+    # If pod is not ready within 1 minute, show the container logs
+    if ! check_pod_readiness $mgmtcompanion_pod mgmtcompanion; then
+        handleWarning "MgmtCompanion pod is not ready within 1 minute. Displaying container logs..."
+        kubectl logs $mgmtcompanion_pod -n mgmtcompanion --all-containers
         exit 1
     fi
+
+    handleSuccess "Installation successful."
 else
     handleError "Installation failed - Required resources are missing in the mgmtcompanion namespace." "Verify the installation steps and ensure all necessary resources are created."
     exit 1
 fi
-
 handleInstalled "MgmtCompanion is installed successfully."
