@@ -406,6 +406,15 @@ if ! kubectl apply -f /tmp/statefulset.yaml -n mgmtcompanion; then
     exit 1
 fi
 handleSuccess "statefulset.yaml applied successfully."
+if ! kubectl apply -f /tmp/role.yaml -n mgmtcompanion; then
+    handleError "Failed to apply role.yaml." "Check the logs above for any error messages."
+    exit 1
+fi
+handleSuccess "role.yaml applied successfully."
+if ! kubectl apply -f /tmp/role_binding.yaml -n mgmtcompanion; then
+    handleError "Failed to apply role_binding.yaml." "Check the logs above for any error messages."
+    exit 1
+fi
 handleSuccess "MgmtCompanion manifests applied successfully."
 
 ## Wait a few seconds for the pod to start
