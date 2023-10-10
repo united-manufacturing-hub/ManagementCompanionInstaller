@@ -10,6 +10,7 @@ export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
 export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
 export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
 export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
+export IMAGE_VERSION=latest
 TIMEOUT=300  # 5 minutes
 INTERVAL=5   # check every 5 seconds
 
@@ -86,6 +87,12 @@ if [[ -n $CUSTOM_API_URL ]]; then
     echo "SECRET_URL: $SECRET_URL"
     echo "STATEFULSET_URL: $STATEFULSET_URL"
     echo "INSTALLER_URL: $INSTALLER_URL"
+fi
+
+# Overwrite IMAGE_VERSION if CUSTOM_IMAGE_VERSION is set
+if [[ -n $CUSTOM_IMAGE_VERSION ]]; then
+    export IMAGE_VERSION=$CUSTOM_IMAGE_VERSION
+    echo "IMAGE_VERSION: $IMAGE_VERSION"
 fi
 
 
@@ -355,6 +362,8 @@ if ! kubectl apply -f /tmp/secret.yaml -n mgmtcompanion; then
     exit 1
 fi
 handleSuccess "secret.yaml applied successfully."
+# Use sed to replace the image version in statefulset.yaml (placeholder is __VERSION__)
+sed -i "s/__VERSION__/$IMAGE_VERSION/g" /tmp/statefulset.yaml
 if ! kubectl apply -f /tmp/statefulset.yaml -n mgmtcompanion; then
     handleError "Failed to apply statefulset.yaml." "Check the logs above for any error messages."
     exit 1
