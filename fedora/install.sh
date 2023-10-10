@@ -120,7 +120,7 @@ read -p "Do you want to continue? (Y/n): " confirm
 confirm=${confirm:-Y}
 if [[ ! $confirm =~ ^[Yy]$ ]]; then
     handleError "Aborting..." "You can run the script again to install MgmtCompanion."
-    exit 1
+
 fi
 handleStep "Beginning installation..."
 
@@ -159,7 +159,7 @@ if ! command -v dig >> /tmp/mgmt_install.log 2>&1; then
     handleStep "dig is not installed. Installing dig..."
     if ! yum install -y bind-utils >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install dig." "Check your network connection or install dig manually using 'sudo yum install bind-utils' and run the script again."
-        exit 1
+
     fi
 fi
 handleSuccess "dig is installed successfully."
@@ -168,13 +168,13 @@ handleCheck "Checking for internet connection..."
 handleStep "Checking if $MANAGEMENT_URL is resolvable..."
 if ! dig +short $MANAGEMENT_URL >> /tmp/mgmt_install.log 2>&1; then
     handleError "$MANAGEMENT_URL is not resolvable." "Check your network connection or try again later."
-    exit 1
+
 fi
 ## Check if $MANAGEMENT_URL is reachable (http)
 handleStep "Checking if $MANAGEMENT_URL is reachable..."
 if ! curl -sSL $API_URL >> /tmp/mgmt_install.log 2>&1; then
     handleError "$MANAGEMENT_URL is not reachable." "Check your network connection or try again later."
-    exit 1
+
 fi
 handleSuccess "$MANAGEMENT_URL is resolvable."
 
@@ -182,7 +182,7 @@ handleSuccess "$MANAGEMENT_URL is resolvable."
 handleCheck "Validating authentication token format..."
 if [[ ! "$AUTH_TOKEN" =~ ^[a-fA-F0-9]{64}$ ]]; then
     handleError "Invalid authentication token format." "Ensure your authentication token is a 256-bit hex-encoded string."
-    exit 1
+
 fi
 handleSuccess "Authentication token format is valid."
 
@@ -192,7 +192,7 @@ if ! command -v curl >> /tmp/mgmt_install.log 2>&1; then
     handleStep "curl is not installed. Installing curl..."
     if ! yum install -y curl; then
         handleError "Failed to install curl." "Check your network connection or install curl manually using 'sudo yum install curl' and run the script again."
-        exit 1
+
     fi
 fi
 handleSuccess "curl is installed successfully."
@@ -223,7 +223,7 @@ if getenforce | grep -Fq 'Enforcing'; then
     handleStep "SELinux is enabled. Installing SELinux policy for k3s..."
     if ! yum install -y container-selinux selinux-policy-base >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y container-selinux selinux-policy-base' and run the script again."
-        exit 1
+
     fi
     handleSuccess "SELinux policy (1/2) for k3s is installed successfully."
     handleStep "Installing SELinux policy (2/2) for k3s..."
@@ -231,18 +231,18 @@ if getenforce | grep -Fq 'Enforcing'; then
     handleStep "Allowing SHA1 package signatures..."
     if ! update-crypto-policies --set DEFAULT:SHA1 >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to allow SHA1 package signatures." "Manually allow SHA1 package signatures using 'sudo update-crypto-policies --set DEFAULT:SHA1' and run the script again."
-        exit 1
+
     fi
     handleSuccess "SHA1 package signatures are allowed."
     if ! yum install -y https://rpm.rancher.io/k3s/latest/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install SELinux policy for k3s." "Check your network connection or install SELinux policy for k3s manually using 'sudo yum install -y https://rpm.rancher.io/k3s/latest/common/centos/7/noarch/k3s-selinux-0.2-1.el7_8.noarch.rpm' and run the script again."
-        exit 1
+
     fi
     # Return back to the default crypto policy
     handleStep "Returning back to the default crypto policy..."
     if ! update-crypto-policies --set DEFAULT >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to return back to the default crypto policy." "Manually return back to the default crypto policy using 'sudo update-crypto-policies --set DEFAULT' and run the script again."
-        exit 1
+
     fi
     handleSuccess "SELinux policy (2/2) for k3s is installed successfully."
 else
@@ -256,7 +256,7 @@ if systemctl list-units --full --all | grep -Fq 'nm-cloud-setup.service'; then
     handleStep "nm-cloud-setup.service is enabled. Disabling nm-cloud-setup.service..."
     if ! systemctl disable --now nm-cloud-setup.service >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to disable nm-cloud-setup.service." "Manually disable nm-cloud-setup.service using 'sudo systemctl disable --now nm-cloud-setup.service' and run the script again."
-        exit 1
+
     fi
     handleSuccess "nm-cloud-setup.service is disabled successfully."
 else
@@ -275,7 +275,7 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     fi
     if ! bash k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to install k3s." "Check the logs above for any error messages."
-        exit 1
+
     fi
     if ! rm k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to remove k3s-install.sh." "Check the file permissions and try again."
@@ -308,7 +308,7 @@ handleSecurity "Checking and disabling the firewall..."
 if systemctl list-units --full --all | grep -Fq 'firewalld.service'; then
     if ! systemctl disable --now firewalld; then
         handleError "Failed to disable the firewall." "Manually disable the firewall using 'sudo systemctl disable --now firewalld' and run the script again."
-        exit 1
+
     fi
     handleSuccess "Firewall disabled successfully."
 else
@@ -326,7 +326,7 @@ if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
     overwrite_confirm=${overwrite_confirm:-N}
     if [[ ! $overwrite_confirm =~ ^[Yy]$ ]]; then
         handleError "Aborting..." "You can run the script again to install MgmtCompanion."
-        exit 1
+
     fi
     handleStep "Overwriting existing installation..."
     # Remove namespace and all resources inside it
@@ -334,7 +334,7 @@ if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
         handleSuccess "Existing installation removed successfully."
     else
         handleError "Failed to remove existing installation." "Manually remove the existing installation using 'kubectl delete namespace mgmtcompanion' and run the script again."
-        exit 1
+
     fi
 fi
 
@@ -343,7 +343,7 @@ handleStep "Installing MgmtCompanion..."
 ## Create namespace
 if ! kubectl create namespace mgmtcompanion; then
     handleError "Failed to create namespace mgmtcompanion." "Check the logs above for any error messages."
-    exit 1
+
 fi
 handleSuccess "Namespace mgmtcompanion created successfully."
 
@@ -351,49 +351,56 @@ handleSuccess "Namespace mgmtcompanion created successfully."
 handleStep "Downloading MgmtCompanion manifests..."
 if ! curl -sSL $CONFIGMAP_URL -o /tmp/configmap.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download configmap.yaml." "Check your network connection"
-    exit 1
+
 fi
 handleSuccess "configmap.yaml downloaded successfully."
 if ! curl -sSL $SECRET_URL -o /tmp/secret.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download secret.yaml." "Check your network connection"
-    exit 1
+
 fi
 handleSuccess "secret.yaml downloaded successfully."
 if ! curl -sSL $STATEFULSET_URL -o /tmp/statefulset.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download statefulset.yaml." "Check your network connection"
-    exit 1
+
 fi
 handleSuccess "statefulset.yaml downloaded successfully."
 if ! curl -sSL $ROLE_URL -o /tmp/role.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download role.yaml." "Check your network connection"
-    exit 1
+
 fi
 if ! curl -sSL $ROLE_BINDING_URL -o /tmp/role_binding.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to download role_binding.yaml." "Check your network connection"
-    exit 1
+
 fi
 handleSuccess "MgmtCompanion manifests downloaded successfully."
 
 # Encode the AUTH_TOKEN to base64 as Kubernetes secrets require base64 encoded values
 handleStep "Encoding the authentication token..."
 encoded_auth_token=$(echo -n "$AUTH_TOKEN" | base64)
-# Replace the auth-token value in the downloaded secret.yaml file
-if ! sed -i 's|auth-token: "null"|auth-token: "'"$encoded_auth_token"'"|' /tmp/secret.yaml >> /tmp/mgmt_install.log 2>&1; then
-    handleError "Failed to update auth-token in secret.yaml." "Check /tmp/mgmt_install.log for more details."
-    exit 1
-fi
-handleSuccess "auth-token updated in secret.yaml successfully."
-
 ## Apply the MgmtCompanion manifests
 handleStep "Applying MgmtCompanion manifests..."
 if ! kubectl apply -f /tmp/configmap.yaml -n mgmtcompanion; then
     handleError "Failed to apply configmap.yaml." "Check the logs above for any error messages."
-    exit 1
+
 fi
 handleSuccess "configmap.yaml applied successfully."
 if ! kubectl apply -f /tmp/secret.yaml -n mgmtcompanion; then
     handleError "Failed to apply secret.yaml." "Check the logs above for any error messages."
-    exit 1
+
+fi
+# Install jq if not already installed
+if ! command -v jq > /dev/null 2>&1; then
+    if ! yum install -y j >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to install jq." "Check your network connection or install jq manually using 'sudo yum install jq' and run the script again."
+    fi
+fi
+
+# Fetch the current configuration of the secret, update the auth-token field, and re-apply the updated configuration
+if ! kubectl get secret mgmtcompanion-secret -n mgmtcompanion -o json |
+   jq --arg token "$encoded_auth_token" '.data["auth-token"]=$token' |
+   kubectl apply -f -; then
+    handleError "Failed to update auth-token in mgmtcompanion-secret." "Check the logs above for any error messages."
+
 fi
 handleStep "validating secret"
 # Verify the auth-token field in the secret
@@ -403,28 +410,28 @@ if [[ "$auth_token_value" != "null" && -n "$auth_token_value" ]]; then
     handleSuccess "auth-token is set successfully in mgmtcompanion-secret."
 else
     handleError "auth-token is not set or is null in mgmtcompanion-secret." "Please check the secret configuration and try again."
-    exit 1
+
 fi
 handleSuccess "secret.yaml applied successfully."
 # Use sed to replace the image version in statefulset.yaml (placeholder is __VERSION__)
 if ! sed -i "s/__VERSION__/$IMAGE_VERSION/g" /tmp/statefulset.yaml >> /tmp/mgmt_install.log 2>&1; then
     handleError "Failed to update image version in statefulset.yaml." "Check /tmp/mgmt_install.log for more details."
-    exit 1
+
 fi
 handleSuccess "Image version updated in statefulset.yaml successfully."
 if ! kubectl apply -f /tmp/statefulset.yaml -n mgmtcompanion; then
     handleError "Failed to apply statefulset.yaml." "Check the logs above for any error messages."
-    exit 1
+
 fi
 handleSuccess "statefulset.yaml applied successfully."
 if ! kubectl apply -f /tmp/role.yaml -n mgmtcompanion; then
     handleError "Failed to apply role.yaml." "Check the logs above for any error messages."
-    exit 1
+
 fi
 handleSuccess "role.yaml applied successfully."
 if ! kubectl apply -f /tmp/role_binding.yaml -n mgmtcompanion; then
     handleError "Failed to apply role_binding.yaml." "Check the logs above for any error messages."
-    exit 1
+
 fi
 handleSuccess "MgmtCompanion manifests applied successfully."
 
@@ -456,6 +463,6 @@ if [[ $(kubectl get statefulsets -n mgmtcompanion --field-selector metadata.name
     handleSuccess "Installation successful."
 else
     handleError "Installation failed - Required resources are missing in the mgmtcompanion namespace." "Verify the installation steps and ensure all necessary resources are created."
-    exit 1
+
 fi
 handleInstalled "MgmtCompanion is installed successfully."
