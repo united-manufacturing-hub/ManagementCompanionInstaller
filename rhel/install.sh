@@ -110,6 +110,7 @@ fi
 # Function to get IP addresses of all real network interfaces
 function get_ip_addresses {
     ip_addresses=$(ip -o addr show up primary scope global | awk '{gsub(/\/.*/,"",$4); print $4}')
+    echo $ip_addresses >> /tmp/mgmt_install.log 2>&1
 }
 
 # Setting up INSTALL_K3S_EXEC with the IP addresses as tls-san
