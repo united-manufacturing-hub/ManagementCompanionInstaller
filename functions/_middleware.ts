@@ -8,5 +8,11 @@ export async function onRequest(context: EventContext<any, any, any>) {
             status: 404
         });
     }
+    // Block access to self
+    if (pathname.indexOf("_middleware.ts") > 0){
+        return new Response(null, {
+            status: 404
+        });
+    }
     return await context.next()
 }
