@@ -11,7 +11,7 @@ export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
 export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
 export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
 export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
-export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
+export INSTALLER_URL=$MANAGEMENT_URL/rhel/install.sh
 export IMAGE_VERSION=latest
 TIMEOUT=60  # 1 minute
 INTERVAL=5   # check every 5 seconds
@@ -90,7 +90,7 @@ if [[ -n $CUSTOM_API_URL ]]; then
     export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
     export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
     export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
-    export INSTALLER_URL=$MANAGEMENT_URL/fedora/install.sh
+    export INSTALLER_URL=$MANAGEMENT_URL/rhel/install.sh
     echo "MANAGEMENT_URL: $MANAGEMENT_URL"
     echo "API_URL: $API_URL"
     echo "CONFIGMAP_URL: $CONFIGMAP_URL"

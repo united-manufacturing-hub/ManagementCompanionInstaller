@@ -4,8 +4,8 @@ export async function onRequest(context: EventContext<any, any, any>) {
     const url = new URL(context.request.url);
     const pathname: string = url.pathname;
 
-    // Allow only requests to /fedora/* and /kubernetes/* excluding any requests containing ..
-    if (!(pathname.startsWith('/fedora/') || pathname.startsWith('/kubernetes/')) || pathname.includes('..')) {
+    // Allow only requests to /rhel/* and /kubernetes/* excluding any requests containing ..
+    if (!(pathname.startsWith('/rhel/') || pathname.startsWith('/kubernetes/')) || pathname.includes('..')) {
         return new Response(null, {
             status: 404
         });
