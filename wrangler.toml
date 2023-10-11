@@ -1,0 +1,3 @@
+[site]
+bucket = "."
+exclude = [".idea", ".gitpod", "README.md"]
