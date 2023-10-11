@@ -107,6 +107,29 @@ if [[ -n $CUSTOM_IMAGE_VERSION ]]; then
     echo "IMAGE_VERSION: $IMAGE_VERSION"
 fi
 
+# Function to get IP addresses of all real network interfaces
+function get_ip_addresses {
+    ip_addresses=$(ip -o addr show up primary scope global | awk '{gsub(/\/.*/,"",$4); print $4}')
+    echo $ip_addresses
+}
+
+# Setting up INSTALL_K3S_EXEC with the IP addresses as tls-san
+function setup_tls_san {
+    ip_addresses=$(get_ip_addresses)
+    INSTALL_K3S_EXEC=""
+    for ip in $ip_addresses; do
+        INSTALL_K3S_EXEC+="--tls-san $ip "
+    done
+
+    # Check if CUSTOM_TLS_SAN is set and if so, add it to INSTALL_K3S_EXEC
+    if [[ -n $CUSTOM_TLS_SAN ]]; then
+      handleStep "Adding $CUSTOM_TLS_SAN to tls-san..."
+      INSTALL_K3S_EXEC+="--tls-san $CUSTOM_TLS_SAN "
+    fi
+
+    export INSTALL_K3S_EXEC
+}
+setup_tls_san
 
 # Summary of changes to be done #600
 handleCheck "This script will perform the following actions on your system:"
@@ -114,6 +137,9 @@ echo -e "1️⃣ Check for necessary prerequisites."
 echo -e "2️⃣ Install k3s and kubectl if not already installed."
 echo -e "3️⃣ Disable the firewall (as per k3s documentation for RHEL/CentOS/Fedora)."
 echo -e "4️⃣ Install or overwrite MgmtCompanion."
+echo -e "5️⃣ Install SELinux policy for k3s."
+echo -e "6️⃣ Disable nm-cloud-setup.service."
+echo -e "7️⃣ Use $INSTALL_K3S_EXEC as tls-san."
 
 # Ask user for confirmation
 read -p "Do you want to continue? (Y/n): " confirm
