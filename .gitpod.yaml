@@ -1,3 +1,16 @@
+# NOTE FROM JEREMY: if you set in your GitPod user settings the env variable CLOUDFLARE_API_TOKEN to the one you can cfrate here (use template Cloudflare Workers), you wil be logged in directly
+# https://dash.cloudflare.com/profile/api-tokens
+
+tasks:
+  - init: |
+      npm install -g wrangler
+      npm install -g prettier
+      cd managementconsole
+      npm install
+      cd ..
+  - command: |
+      wrangler whoami
+
 jetbrains:
   plugins:
     - lermitage.intellij.extratci # Extra colorfull icons
