@@ -306,8 +306,32 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to make k3s-install.sh executable." "Check the file permissions and try again."
     fi
     if ! bash k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
+        #Rollback changes
+        handleStep "Rolling back changes..."
+        # Attempt to invoke /usr/local/bin/k3s-uninstall.sh if exists
+        if [[ -f /usr/local/bin/k3s-uninstall.sh ]]; then
+            if ! bash /usr/local/bin/k3s-uninstall.sh >> /tmp/mgmt_install.log 2>&1; then
+              handleWarning "Failed to invoke /usr/local/bin/k3s-uninstall.sh."
+            fi
+        elif
+          handleWarning "/usr/local/bin/k3s-uninstall.sh not found."
+          handleStep "Removing k3s..."
+          if ! yum remove -y k3s >> /tmp/mgmt_install.log 2>&1; then
+              handleWarning "Failed to remove k3s via yum"
+          fi
+          handleStep "Removing k3s files..."
+          if ! rm -rf /etc/rancher >> /tmp/mgmt_install.log 2>&1; then
+              handleWarning "Failed to remove k3s files (/etc/rancher)."
+          fi
+          if ! rm -rf /var/lib/rancher >> /tmp/mgmt_install.log 2>&1; then
+              handleWarning "Failed to remove k3s files (/var/lib/rancher)."
+          fi
+          # Delete binary
+          if ! rm -f /usr/local/bin/k3s >> /tmp/mgmt_install.log 2>&1; then
+              handleWarning "Failed to remove k3s binary (/usr/local/bin/k3s)."
+          fi
+        fi
         handleError "Failed to install k3s." "Check the logs above for any error messages."
-
     fi
     if ! rm k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to remove k3s-install.sh." "Check the file permissions and try again."
