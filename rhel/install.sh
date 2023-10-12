@@ -313,7 +313,7 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
             if ! bash /usr/local/bin/k3s-uninstall.sh >> /tmp/mgmt_install.log 2>&1; then
               handleWarning "Failed to invoke /usr/local/bin/k3s-uninstall.sh."
             fi
-        elif
+        else
           handleWarning "/usr/local/bin/k3s-uninstall.sh not found."
           handleStep "Removing k3s..."
           if ! yum remove -y k3s >> /tmp/mgmt_install.log 2>&1; then
