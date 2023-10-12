@@ -6,12 +6,13 @@ export INSTALL_KUBECTL_VERSION=v1.28.2
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 export MANAGEMENT_URL=https://management.umh.app
 export API_URL=$MANAGEMENT_URL/api
-export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
-export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
-export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
-export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
-export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
-export INSTALLER_URL=$MANAGEMENT_URL/rhel/install.sh
+export STATIC_URL=$MANAGEMENT_URL/static
+export CONFIGMAP_URL=STATIC_URL/kubernetes/configmap.yaml
+export SECRET_URL=STATIC_URL/kubernetes/secret.yaml
+export STATEFULSET_URL=STATIC_URL/kubernetes/statefulset.yaml
+export ROLE_URL=STATIC_URL/kubernetes/role.yaml
+export ROLE_BINDING_URL=STATIC_URL/kubernetes/rolebinding.yaml
+export INSTALLER_URL=STATIC_URL/rhel/install.sh
 export IMAGE_VERSION=latest
 TIMEOUT=60  # 1 minute
 INTERVAL=5   # check every 5 seconds
@@ -85,14 +86,16 @@ clear
 if [[ -n $CUSTOM_API_URL ]]; then
     export MANAGEMENT_URL=$CUSTOM_API_URL
     export API_URL=$MANAGEMENT_URL/api
-    export CONFIGMAP_URL=$MANAGEMENT_URL/kubernetes/configmap.yaml
-    export SECRET_URL=$MANAGEMENT_URL/kubernetes/secret.yaml
-    export STATEFULSET_URL=$MANAGEMENT_URL/kubernetes/statefulset.yaml
-    export ROLE_URL=$MANAGEMENT_URL/kubernetes/role.yaml
-    export ROLE_BINDING_URL=$MANAGEMENT_URL/kubernetes/rolebinding.yaml
-    export INSTALLER_URL=$MANAGEMENT_URL/rhel/install.sh
+    export STATIC_URL=$MANAGEMENT_URL/static
+    export CONFIGMAP_URL=STATIC_URL/kubernetes/configmap.yaml
+    export SECRET_URL=STATIC_URL/kubernetes/secret.yaml
+    export STATEFULSET_URL=STATIC_URL/kubernetes/statefulset.yaml
+    export ROLE_URL=STATIC_URL/kubernetes/role.yaml
+    export ROLE_BINDING_URL=STATIC_URL/kubernetes/rolebinding.yaml
+    export INSTALLER_URL=STATIC_URL/rhel/install.sh
     echo "MANAGEMENT_URL: $MANAGEMENT_URL"
     echo "API_URL: $API_URL"
+    echo "STATIC_URL: $STATIC_URL"
     echo "CONFIGMAP_URL: $CONFIGMAP_URL"
     echo "SECRET_URL: $SECRET_URL"
     echo "STATEFULSET_URL: $STATEFULSET_URL"
