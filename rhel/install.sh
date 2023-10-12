@@ -518,7 +518,8 @@ if [[ $(kubectl get statefulsets -n mgmtcompanion --field-selector metadata.name
     ELAPSED=0
     handleSleep "Waiting for MgmtCompanion pod ($mgmtcompanion_pod) to be running and ready..." 5
     while ! check_pod_readiness $mgmtcompanion_pod mgmtcompanion && [ $ELAPSED -lt $TIMEOUT ]; do
-        handleSleep "Waiting for MgmtCompanion pod to be ready..." $INTERVAL
+        handleSleep "Waiting for MgmtCompanion ($mgmtcompanion_pod) pod to be ready..." $INTERVAL
+        mgmtcompanion_pod=$(kubectl get pods -n mgmtcompanion --selector=statefulset.kubernetes.io/pod-name=mgmtcompanion-0 -o jsonpath='{.items[*].metadata.name}')
         ELAPSED=$((ELAPSED + INTERVAL))
     done
 
