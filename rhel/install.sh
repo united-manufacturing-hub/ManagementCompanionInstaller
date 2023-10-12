@@ -342,6 +342,11 @@ else
 fi
 handleSuccess "Firewall disabled successfully."
 
+handleCheck "Checking KUBECONFIG file..."
+if [[ ! -f "$KUBECONFIG" ]]; then
+    handleError "KUBECONFIG file not found." "Check the file permissions and try again."
+fi
+
 # The install script shall detect if MgmgCompanion is already installed #577
 handleCheck "Checking for existing MgmtCompanion installation..."
 if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
@@ -360,7 +365,6 @@ if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
         handleSuccess "Existing installation removed successfully."
     else
         handleError "Failed to remove existing installation." "Manually remove the existing installation using 'kubectl delete namespace mgmtcompanion' and run the script again."
-
     fi
 fi
 
