@@ -291,8 +291,9 @@ fi
 
 # The install script shall check if k3s is installed, and if not install it #575
 handleCheck "Checking for k3s..."
-if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
-    handleStep "k3s is not installed. Installing k3s..."
+if ! command -v k3s >> /tmp/mgmt_install.log 2>&1 || [[ ! -f $KUBECONFIG ]]; then
+    echo "k3s is not installed or KUBECONFIG file does not exist" >> /tmp/mgmt_install.log
+    # Handle the error condition here
     handleStep "Allowing SHA1 package signatures..."
     if ! update-crypto-policies --set DEFAULT:SHA1 >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to allow SHA1 package signatures." "Manually allow SHA1 package signatures using 'sudo update-crypto-policies --set DEFAULT:SHA1' and run the script again."
