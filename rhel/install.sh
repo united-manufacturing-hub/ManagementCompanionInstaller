@@ -87,12 +87,12 @@ if [[ -n $CUSTOM_API_URL ]]; then
     export MANAGEMENT_URL=$CUSTOM_API_URL
     export API_URL=$MANAGEMENT_URL/api
     export STATIC_URL=$MANAGEMENT_URL/static
-    export CONFIGMAP_URL=STATIC_URL/kubernetes/configmap.yaml
-    export SECRET_URL=STATIC_URL/kubernetes/secret.yaml
-    export STATEFULSET_URL=STATIC_URL/kubernetes/statefulset.yaml
-    export ROLE_URL=STATIC_URL/kubernetes/role.yaml
-    export ROLE_BINDING_URL=STATIC_URL/kubernetes/rolebinding.yaml
-    export INSTALLER_URL=STATIC_URL/rhel/install.sh
+    export CONFIGMAP_URL=$STATIC_URL/kubernetes/configmap.yaml
+    export SECRET_URL=$STATIC_URL/kubernetes/secret.yaml
+    export STATEFULSET_URL=$STATIC_URL/kubernetes/statefulset.yaml
+    export ROLE_URL=$STATIC_URL/kubernetes/role.yaml
+    export ROLE_BINDING_URL=$STATIC_URL/kubernetes/rolebinding.yaml
+    export INSTALLER_URL=$STATIC_URL/rhel/install.sh
     echo "MANAGEMENT_URL: $MANAGEMENT_URL"
     echo "API_URL: $API_URL"
     echo "STATIC_URL: $STATIC_URL"
