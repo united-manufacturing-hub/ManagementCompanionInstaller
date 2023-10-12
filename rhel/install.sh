@@ -293,6 +293,12 @@ fi
 handleCheck "Checking for k3s..."
 if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     handleStep "k3s is not installed. Installing k3s..."
+    handleStep "Allowing SHA1 package signatures..."
+    if ! update-crypto-policies --set DEFAULT:SHA1 >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to allow SHA1 package signatures." "Manually allow SHA1 package signatures using 'sudo update-crypto-policies --set DEFAULT:SHA1' and run the script again."
+
+    fi
+    handleSuccess "SHA1 package signatures are allowed."
     if ! curl -sSL https://get.k3s.io -o k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to download k3s-install.sh." "Check your network connection and try again."
     fi
@@ -305,6 +311,11 @@ if ! command -v k3s >> /tmp/mgmt_install.log 2>&1; then
     fi
     if ! rm k3s-install.sh >> /tmp/mgmt_install.log 2>&1; then
         handleError "Failed to remove k3s-install.sh." "Check the file permissions and try again."
+    fi
+    handleStep "Returning back to the default crypto policy..."
+    if ! update-crypto-policies --set DEFAULT >> /tmp/mgmt_install.log 2>&1; then
+        handleError "Failed to return back to the default crypto policy." "Manually return back to the default crypto policy using 'sudo update-crypto-policies --set DEFAULT' and run the script again."
+
     fi
     handleSuccess "k3s is installed successfully."
 else
