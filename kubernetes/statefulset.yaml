@@ -22,6 +22,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: os-release
+              mountPath: /host-os-release
+              readOnly: true  # Set readOnly to true
           readinessProbe:
             httpGet:
               path: /readiness
@@ -34,6 +37,11 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: os-release
+          hostPath:
+            path: /etc/os-release
+            type: File
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
