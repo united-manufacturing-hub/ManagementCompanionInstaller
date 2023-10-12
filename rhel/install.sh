@@ -17,7 +17,6 @@ export IMAGE_VERSION=latest
 TIMEOUT=60  # 1 minute
 INTERVAL=5   # check every 5 seconds
 
-
 function logMessage {
     local emoji=$1
     local message=$2
@@ -144,12 +143,16 @@ echo -e "5️⃣ Install SELinux policy for k3s."
 echo -e "6️⃣ Disable nm-cloud-setup.service."
 echo -e "7️⃣ Use $INSTALL_K3S_EXEC as tls-san."
 
-# Ask user for confirmation
-read -p "Do you want to continue? (Y/n): " confirm
-confirm=${confirm:-Y}
-if [[ ! $confirm =~ ^[Yy]$ ]]; then
-    handleError "Aborting..." "You can run the script again to install MgmtCompanion."
+# Ask user for confirmation (or continue if SILENT is set)
+if [[ -n $SILENT ]]; then
+  handleWarning "SILENT is set. Skipping confirmation..."
+else
+  read -p "Do you want to continue? (Y/n): " confirm
+  confirm=${confirm:-Y}
+  if [[ ! $confirm =~ ^[Yy]$ ]]; then
+      handleError "Aborting..." "You can run the script again to install MgmtCompanion."
 
+  fi
 fi
 handleStep "Beginning installation..."
 
@@ -392,11 +395,15 @@ if kubectl get namespace mgmtcompanion >> /tmp/mgmt_install.log 2>&1; then
     handleWarning "MgmtCompanion is already installed."
 
     # If the install script detects an existing MgmtCompanion installation it shall ask the user if he wants to overwrite or abort #578
-    read -p "Do you want to overwrite the existing installation? (y/N): " overwrite_confirm
-    overwrite_confirm=${overwrite_confirm:-N}
-    if [[ ! $overwrite_confirm =~ ^[Yy]$ ]]; then
-        handleError "Aborting..." "You can run the script again to install MgmtCompanion."
-
+    # Check if SILENT is set
+    if [[ -n $SILENT ]]; then
+      handleWarning "SILENT is set. Skipping confirmation..."
+    else
+      read -p "Do you want to overwrite the existing installation? (y/N): " overwrite_confirm
+      overwrite_confirm=${overwrite_confirm:-N}
+      if [[ ! $overwrite_confirm =~ ^[Yy]$ ]]; then
+          handleError "Aborting..." "You can run the script again to install MgmtCompanion."
+      fi
     fi
     handleStep "Overwriting existing installation..."
     # Remove namespace and all resources inside it
